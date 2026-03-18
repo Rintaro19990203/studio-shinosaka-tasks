@@ -91,6 +91,7 @@ async function saveTask() {
     category: document.getElementById('f-cat').value,
     due_date: document.getElementById('f-due').value || null,
     status: document.getElementById('f-status').value,
+    progress_note: document.getElementById('f-progress-note').value.trim(),
     completion_note: document.getElementById('f-completion-note').value.trim(),
   }
   if (editId) {
@@ -144,14 +145,17 @@ function getFiltered() {
 function makeCard(t) {
   const dc = dueCls(t.due_date)
   const dl = dueLabel(t.due_date)
+  const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getMonth()+1}/${d.getDate()} 登録` })() : ''
   return `<div class="task" onclick="openModal('${t.id}')">
     <div class="task-title">${t.title}</div>
     ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
+    ${t.progress_note ? `<div class="task-desc" style="border-left:2px solid var(--amber);padding-left:8px;color:var(--amber)">進捗：${t.progress_note}</div>` : ''}
     ${t.completion_note ? `<div class="task-desc" style="border-left:2px solid var(--green);padding-left:8px;color:var(--green)">完了報告：${t.completion_note}</div>` : ''}
     <div class="task-meta">
       <span class="tag tag-person">${t.assignee}</span>
       <span class="tag tag-cat">${t.category || ''}</span>
       <span class="tag ${dc}">${dl}</span>
+      ${createdAt ? `<span class="tag" style="background:var(--surface2);color:var(--text3)">${createdAt}</span>` : ''}
     </div>
   </div>`
 }
@@ -202,6 +206,7 @@ window.openModal = function(id) {
   document.getElementById('f-cat').value = m ? m.category || '設備' : '設備'
   document.getElementById('f-due').value = m ? m.due_date || '' : ''
   document.getElementById('f-status').value = m ? m.status : 'todo'
+  document.getElementById('f-progress-note').value = m ? m.progress_note || '' : ''
   document.getElementById('f-completion-note').value = m ? m.completion_note || '' : ''
   document.getElementById('btn-delete').style.display = id ? '' : 'none'
   document.getElementById('modal-overlay').style.display = 'flex'
