@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js'
 
-const MEMBERS = ['田中理事長','佐藤副理事長','山田会計担当','鈴木設備担当','高橋書記','中村理事','小林理事']
+const MEMBERS = ['岸本理事','田中理事','水上理事','福澤理事','藤枝理事','河口監事','森監事','川上氏（日ビル）','石野氏（日ビル）','日本ビルサービス','その他']
 const CATS = ['設備','会計','総会','清掃','防犯','その他']
 
 const today = new Date(); today.setHours(0,0,0,0)
@@ -91,6 +91,7 @@ async function saveTask() {
     category: document.getElementById('f-cat').value,
     due_date: document.getElementById('f-due').value || null,
     status: document.getElementById('f-status').value,
+    completion_note: document.getElementById('f-completion-note').value.trim(),
   }
   if (editId) {
     await supabase.from('tasks').update(payload).eq('id', editId)
@@ -146,6 +147,7 @@ function makeCard(t) {
   return `<div class="task" onclick="openModal('${t.id}')">
     <div class="task-title">${t.title}</div>
     ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
+    ${t.completion_note ? `<div class="task-desc" style="border-left:2px solid var(--green);padding-left:8px;color:var(--green)">完了報告：${t.completion_note}</div>` : ''}
     <div class="task-meta">
       <span class="tag tag-person">${t.assignee}</span>
       <span class="tag tag-cat">${t.category || ''}</span>
@@ -200,6 +202,7 @@ window.openModal = function(id) {
   document.getElementById('f-cat').value = m ? m.category || '設備' : '設備'
   document.getElementById('f-due').value = m ? m.due_date || '' : ''
   document.getElementById('f-status').value = m ? m.status : 'todo'
+  document.getElementById('f-completion-note').value = m ? m.completion_note || '' : ''
   document.getElementById('btn-delete').style.display = id ? '' : 'none'
   document.getElementById('modal-overlay').style.display = 'flex'
 }
