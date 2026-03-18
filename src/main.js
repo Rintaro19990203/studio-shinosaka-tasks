@@ -146,7 +146,7 @@ function makeCard(t) {
   const dc = dueCls(t.due_date)
   const dl = dueLabel(t.due_date)
   const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getMonth()+1}/${d.getDate()} 登録` })() : ''
-  return `<div class="task" onclick="openModal('${t.id}')">
+  return `<div class="task" onclick="openDetail('${t.id}')">
     <div class="task-title">${t.title}</div>
     ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
     ${t.progress_note ? `<div class="task-desc" style="border-left:2px solid var(--amber);padding-left:8px;color:var(--amber)">進捗：${t.progress_note}</div>` : ''}
@@ -195,7 +195,95 @@ function render() {
   asel.innerHTML = '<option value="">全担当者</option>' + MEMBERS.map(m => `<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('')
 }
 
-// モーダル
+// ─── 詳細パネル ───────────────────────────────────────────────
+const STATUS_LABEL = { todo: '未着手', doing: '対応中', done: '完了' }
+
+window.openDetail = function(id) {
+  const t = tasks.find(t => t.id == id)
+  if (!t) return
+  const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}` })() : '—'
+  const dueStr = t.due_date ? (() => { const d = new Date(t.due_date); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}` })() : '—'
+
+  document.getElementById('detail-title').textContent = t.title
+  document.getElementById('detail-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">担当者</div>
+        <div style="font-size:14px;font-weight:500">${t.assignee}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">ステータス</div>
+        <div style="font-size:14px;font-weight:500">${STATUS_LABEL[t.status] || t.status}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">カテゴリ</div>
+        <div style="font-size:14px;font-weight:500">${t.category || '—'}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">期限</div>
+        <div style="font-size:14px;font-weight:500">${dueStr}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">登録日</div>
+        <div style="font-size:14px;font-weight:500">${createdAt}</div>
+      </div>
+    </div>
+    ${t.description ? `<div style="margin-bottom:1rem"><div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500">詳細・メモ</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${t.description}</div></div>` : ''}
+    ${t.progress_note ? `<div style="margin-bottom:1rem;padding:12px;border-left:3px solid var(--amber);background:rgba(239,159,39,0.06);border-radius:0 var(--radius) var(--radius) 0"><div style="font-size:11px;color:var(--amber);margin-bottom:5px;font-weight:500">進捗状況</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${t.progress_note}</div></div>` : ''}
+    ${t.completion_note ? `<div style="margin-bottom:1rem;padding:12px;border-left:3px solid var(--green);background:rgba(99,153,34,0.06);border-radius:0 var(--radius) var(--radius) 0"><div style="font-size:11px;color:var(--green);margin-bottom:5px;font-weight:500">完了報告</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${t.completion_note}</div></div>` : ''}
+  `
+  document.getElementById('btn-detail-edit').onclick = () => { closeDetail(); openModal(id) }
+  document.getElementById('btn-detail-pdf').onclick = () => exportPDF(t)
+  document.getElementById('detail-overlay').style.display = 'flex'
+}
+
+function closeDetail() { document.getElementById('detail-overlay').style.display = 'none' }
+document.getElementById('btn-detail-close').addEventListener('click', closeDetail)
+document.getElementById('detail-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeDetail() })
+
+// ─── PDF出力 ───────────────────────────────────────────────
+function exportPDF(t) {
+  const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日` })() : '—'
+  const dueStr = t.due_date ? (() => { const d = new Date(t.due_date); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日` })() : '—'
+  const STATUS_LABEL = { todo: '未着手', doing: '対応中', done: '完了' }
+  const printWin = window.open('', '_blank')
+  printWin.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>${t.title}</title>
+  <style>
+    body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; padding: 40px; color: #1a1a18; font-size: 13px; line-height: 1.7; }
+    h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .sub { font-size: 12px; color: #888; margin-bottom: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .cell { background: #f5f4f0; border-radius: 8px; padding: 10px 14px; }
+    .cell-label { font-size: 11px; color: #888; margin-bottom: 2px; }
+    .cell-val { font-size: 13px; font-weight: 500; }
+    .section { margin-bottom: 16px; }
+    .section-title { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+    .section-body { font-size: 13px; white-space: pre-wrap; line-height: 1.7; }
+    .progress { border-left: 3px solid #EF9F27; padding: 10px 14px; background: #fdf8f0; border-radius: 0 8px 8px 0; margin-bottom:16px }
+    .done { border-left: 3px solid #639922; padding: 10px 14px; background: #f4faea; border-radius: 0 8px 8px 0; margin-bottom:16px }
+    .footer { margin-top: 40px; font-size: 11px; color: #aaa; border-top: 1px solid #eee; padding-top: 12px; }
+    @media print { body { padding: 20px; } }
+  </style></head><body>
+  <h1>${t.title}</h1>
+  <div class="sub">スタジオ新大阪管理組合 理事会タスク管理</div>
+  <div class="grid">
+    <div class="cell"><div class="cell-label">担当者</div><div class="cell-val">${t.assignee}</div></div>
+    <div class="cell"><div class="cell-label">ステータス</div><div class="cell-val">${STATUS_LABEL[t.status] || t.status}</div></div>
+    <div class="cell"><div class="cell-label">カテゴリ</div><div class="cell-val">${t.category || '—'}</div></div>
+    <div class="cell"><div class="cell-label">期限</div><div class="cell-val">${dueStr}</div></div>
+    <div class="cell"><div class="cell-label">登録日</div><div class="cell-val">${createdAt}</div></div>
+  </div>
+  ${t.description ? `<div class="section"><div class="section-title">詳細・メモ</div><div class="section-body">${t.description}</div></div>` : ''}
+  ${t.progress_note ? `<div class="progress"><div class="section-title" style="color:#854F0B">進捗状況</div><div class="section-body">${t.progress_note}</div></div>` : ''}
+  ${t.completion_note ? `<div class="done"><div class="section-title" style="color:#3B6D11">完了報告</div><div class="section-body">${t.completion_note}</div></div>` : ''}
+  <div class="footer">出力日時：${new Date().toLocaleString('ja-JP')}</div>
+  <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`)
+  printWin.document.close()
+}
+
+// ─── モーダル ───────────────────────────────────────────────
 window.openModal = function(id) {
   editId = id || null
   const m = id ? tasks.find(t => t.id == id) : null

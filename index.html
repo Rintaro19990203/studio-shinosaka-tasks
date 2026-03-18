@@ -13,7 +13,7 @@
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">🏢 理事会タスク管理</div>
-    <div class="auth-sub">グリーンヒルズ管理組合</div>
+    <div class="auth-sub">スタジオ新大阪管理組合</div>
     <div class="auth-tabs">
       <div class="auth-tab active" data-tab="login">ログイン</div>
       <div class="auth-tab" data-tab="signup">新規登録</div>
@@ -68,6 +68,22 @@
   </div>
 </div>
 
+<!-- 詳細パネル -->
+<div class="overlay" id="detail-overlay" style="display:none">
+  <div class="modal" style="width:min(560px,92vw)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:8px;flex-wrap:wrap">
+      <div class="modal-title" style="margin:0" id="detail-title"></div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn-cancel" id="btn-detail-pdf">📄 PDF出力</button>
+        <button class="btn-save" id="btn-detail-edit">編集</button>
+        <button class="btn-cancel" id="btn-detail-close">✕</button>
+      </div>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- 編集モーダル -->
 <div class="overlay" id="modal-overlay" style="display:none">
   <div class="modal">
     <div class="modal-title" id="modal-title">タスクを追加</div>
