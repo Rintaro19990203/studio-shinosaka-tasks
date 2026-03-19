@@ -59,7 +59,7 @@
       <select id="filterCat">
         <option value="">全カテゴリ</option>
         <option>設備</option><option>会計</option><option>総会</option>
-        <option>清掃</option><option>防犯</option><option>その他</option>
+        <option>清掃</option><option>防犯</option><option>消防</option><option>その他</option>
       </select>
       <input id="search" placeholder="タスクを検索...">
       <button class="btn-add" id="btn-add">＋ タスクを追加</button>
@@ -95,28 +95,17 @@
       <label class="form-label">詳細・メモ</label>
       <textarea class="form-textarea" id="f-desc" placeholder="備考や詳細を入力..."></textarea>
     </div>
+    <div class="form-group">
+      <label class="form-label">担当者 *（複数選択可）</label>
+      <div id="f-assignee-list" style="border:0.5px solid var(--border2);border-radius:var(--radius);padding:8px 12px;max-height:200px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:2px"></div>
+    </div>
     <div class="modal-grid">
-      <div class="form-group">
-        <label class="form-label">担当者 *</label>
-        <select class="form-select" id="f-assignee">
-          <option value="">選択してください</option>
-          <option>岸本理事</option><option>田中理事</option><option>水上理事</option><option>福澤理事</option>
-          <option>藤枝理事</option><option>河口監事</option><option>森監事</option>
-          <option>川上氏（日ビル）</option><option>石野氏（日ビル）</option><option>日本ビルサービス</option><option>その他</option>
-        </select>
-      </div>
       <div class="form-group">
         <label class="form-label">カテゴリ</label>
         <select class="form-select" id="f-cat">
           <option>設備</option><option>会計</option><option>総会</option>
-          <option>清掃</option><option>防犯</option><option>その他</option>
+          <option>清掃</option><option>防犯</option><option>消防</option><option>その他</option>
         </select>
-      </div>
-    </div>
-    <div class="modal-grid">
-      <div class="form-group">
-        <label class="form-label">期限</label>
-        <input class="form-input" type="date" id="f-due">
       </div>
       <div class="form-group">
         <label class="form-label">ステータス</label>
@@ -126,6 +115,10 @@
           <option value="done">完了</option>
         </select>
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">期限</label>
+      <input class="form-input" type="date" id="f-due">
     </div>
     <div class="form-group">
       <label class="form-label">進捗状況</label>

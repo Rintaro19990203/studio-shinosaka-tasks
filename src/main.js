@@ -1,12 +1,20 @@
 import { supabase } from './supabase.js'
 
-const MEMBERS = ['岸本理事','田中理事','水上理事','福澤理事','藤枝理事','河口監事','森監事','川上氏（日ビル）','石野氏（日ビル）','日本ビルサービス','その他']
-const CATS = ['設備','会計','総会','清掃','防犯','その他']
+const MEMBERS = ['岸本理事','原田理事','黒木理事','藤枝理事','水上理事','田中理事','福澤理事','森監事','河口監事','川上氏','石野氏','管理会社','その他']
+const CATS = ['設備','会計','総会','清掃','防犯','消防','その他']
+const STATUS_LABEL = { todo: '未着手', doing: '対応中', done: '完了' }
 
 const today = new Date(); today.setHours(0,0,0,0)
 let tasks = []
 let editId = null
 let currentUser = null
+
+// assignee は配列で保存。旧データ（文字列）にも対応
+function getAssignees(t) {
+  if (!t.assignee) return []
+  if (Array.isArray(t.assignee)) return t.assignee
+  try { const p = JSON.parse(t.assignee); return Array.isArray(p) ? p : [t.assignee] } catch { return [t.assignee] }
+}
 
 // ─── AUTH ───────────────────────────────────────────────
 const authScreen = document.getElementById('auth-screen')
@@ -21,7 +29,6 @@ function showApp(user) {
   loadTasks()
 }
 
-// タブ切り替え
 document.querySelectorAll('.auth-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'))
@@ -32,7 +39,6 @@ document.querySelectorAll('.auth-tab').forEach(tab => {
   })
 })
 
-// ログイン
 document.getElementById('btn-login').addEventListener('click', async () => {
   const email = document.getElementById('login-email').value.trim()
   const password = document.getElementById('login-password').value
@@ -44,7 +50,6 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   showApp(data.user)
 })
 
-// 新規登録
 document.getElementById('btn-signup').addEventListener('click', async () => {
   const email = document.getElementById('signup-email').value.trim()
   const password = document.getElementById('signup-password').value
@@ -57,14 +62,12 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
   msg.textContent = '確認メールを送信しました。メールのリンクをクリックして登録を完了してください。'; msg.className = 'auth-msg success'
 })
 
-// ログアウト
 document.getElementById('btn-logout').addEventListener('click', async () => {
   await supabase.auth.signOut()
   currentUser = null
   showAuth()
 })
 
-// セッション確認
 supabase.auth.getSession().then(({ data: { session } }) => {
   if (session) showApp(session.user)
   else showAuth()
@@ -81,13 +84,13 @@ async function loadTasks() {
 
 async function saveTask() {
   const title = document.getElementById('f-title').value.trim()
-  const assignee = document.getElementById('f-assignee').value
+  const checked = [...document.querySelectorAll('.assignee-cb:checked')].map(cb => cb.value)
   if (!title) { alert('タスク名を入力してください'); return }
-  if (!assignee) { alert('担当者を選択してください'); return }
+  if (checked.length === 0) { alert('担当者を1人以上選択してください'); return }
   const payload = {
     title,
     description: document.getElementById('f-desc').value.trim(),
-    assignee,
+    assignee: JSON.stringify(checked),
     category: document.getElementById('f-cat').value,
     due_date: document.getElementById('f-due').value || null,
     status: document.getElementById('f-status').value,
@@ -135,7 +138,7 @@ function getFiltered() {
   const c = document.getElementById('filterCat').value
   const q = document.getElementById('search').value.toLowerCase()
   return tasks.filter(t => {
-    if (a && t.assignee !== a) return false
+    if (a && !getAssignees(t).includes(a)) return false
     if (c && t.category !== c) return false
     if (q && !t.title.toLowerCase().includes(q) && !(t.description||'').toLowerCase().includes(q)) return false
     return true
@@ -145,6 +148,7 @@ function getFiltered() {
 function makeCard(t) {
   const dc = dueCls(t.due_date)
   const dl = dueLabel(t.due_date)
+  const assignees = getAssignees(t)
   const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getMonth()+1}/${d.getDate()} 登録` })() : ''
   return `<div class="task" onclick="openDetail('${t.id}')">
     <div class="task-title">${t.title}</div>
@@ -152,7 +156,7 @@ function makeCard(t) {
     ${t.progress_note ? `<div class="task-desc" style="border-left:2px solid var(--amber);padding-left:8px;color:var(--amber)">進捗：${t.progress_note}</div>` : ''}
     ${t.completion_note ? `<div class="task-desc" style="border-left:2px solid var(--green);padding-left:8px;color:var(--green)">完了報告：${t.completion_note}</div>` : ''}
     <div class="task-meta">
-      <span class="tag tag-person">${t.assignee}</span>
+      ${assignees.map(a => `<span class="tag tag-person">${a}</span>`).join('')}
       <span class="tag tag-cat">${t.category || ''}</span>
       <span class="tag ${dc}">${dl}</span>
       ${createdAt ? `<span class="tag" style="background:var(--surface2);color:var(--text3)">${createdAt}</span>` : ''}
@@ -196,20 +200,19 @@ function render() {
 }
 
 // ─── 詳細パネル ───────────────────────────────────────────────
-const STATUS_LABEL = { todo: '未着手', doing: '対応中', done: '完了' }
-
 window.openDetail = function(id) {
   const t = tasks.find(t => t.id == id)
   if (!t) return
+  const assignees = getAssignees(t)
   const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}` })() : '—'
   const dueStr = t.due_date ? (() => { const d = new Date(t.due_date); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}` })() : '—'
 
   document.getElementById('detail-title').textContent = t.title
   document.getElementById('detail-content').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
-      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">担当者</div>
-        <div style="font-size:14px;font-weight:500">${t.assignee}</div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem;grid-column:1/-1">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:5px">担当者</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${assignees.map(a => `<span class="tag tag-person">${a}</span>`).join('')}</div>
       </div>
       <div style="background:var(--surface2);border-radius:var(--radius);padding:.75rem">
         <div style="font-size:11px;color:var(--text2);margin-bottom:3px">ステータス</div>
@@ -243,22 +246,25 @@ document.getElementById('detail-overlay').addEventListener('click', e => { if (e
 
 // ─── PDF出力 ───────────────────────────────────────────────
 function exportPDF(t) {
+  const assignees = getAssignees(t)
   const createdAt = t.created_at ? (() => { const d = new Date(t.created_at); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日` })() : '—'
   const dueStr = t.due_date ? (() => { const d = new Date(t.due_date); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日` })() : '—'
-  const STATUS_LABEL = { todo: '未着手', doing: '対応中', done: '完了' }
   const printWin = window.open('', '_blank')
   printWin.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
   <title>${t.title}</title>
   <style>
-    body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; padding: 40px; color: #1a1a18; font-size: 13px; line-height: 1.7; }
+    body { font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif; padding: 40px; color: #1a1a18; font-size: 13px; line-height: 1.7; }
     h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
     .sub { font-size: 12px; color: #888; margin-bottom: 24px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
     .cell { background: #f5f4f0; border-radius: 8px; padding: 10px 14px; }
-    .cell-label { font-size: 11px; color: #888; margin-bottom: 2px; }
+    .cell.full { grid-column: 1 / -1; }
+    .cell-label { font-size: 11px; color: #888; margin-bottom: 4px; }
     .cell-val { font-size: 13px; font-weight: 500; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #e0e0d8; color: #555; }
     .section { margin-bottom: 16px; }
-    .section-title { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+    .section-title { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 6px; }
     .section-body { font-size: 13px; white-space: pre-wrap; line-height: 1.7; }
     .progress { border-left: 3px solid #EF9F27; padding: 10px 14px; background: #fdf8f0; border-radius: 0 8px 8px 0; margin-bottom:16px }
     .done { border-left: 3px solid #639922; padding: 10px 14px; background: #f4faea; border-radius: 0 8px 8px 0; margin-bottom:16px }
@@ -268,7 +274,7 @@ function exportPDF(t) {
   <h1>${t.title}</h1>
   <div class="sub">スタジオ新大阪管理組合 理事会タスク管理</div>
   <div class="grid">
-    <div class="cell"><div class="cell-label">担当者</div><div class="cell-val">${t.assignee}</div></div>
+    <div class="cell full"><div class="cell-label">担当者</div><div class="tags">${assignees.map(a => `<span class="tag">${a}</span>`).join('')}</div></div>
     <div class="cell"><div class="cell-label">ステータス</div><div class="cell-val">${STATUS_LABEL[t.status] || t.status}</div></div>
     <div class="cell"><div class="cell-label">カテゴリ</div><div class="cell-val">${t.category || '—'}</div></div>
     <div class="cell"><div class="cell-label">期限</div><div class="cell-val">${dueStr}</div></div>
@@ -283,14 +289,24 @@ function exportPDF(t) {
   printWin.document.close()
 }
 
-// ─── モーダル ───────────────────────────────────────────────
+// ─── モーダル（担当者チェックボックス） ───────────────────────────────────────────────
+function buildAssigneeCheckboxes(selected = []) {
+  return MEMBERS.map(m => `
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:13px">
+      <input type="checkbox" class="assignee-cb" value="${m}" ${selected.includes(m) ? 'checked' : ''} style="width:15px;height:15px;cursor:pointer">
+      ${m}
+    </label>
+  `).join('')
+}
+
 window.openModal = function(id) {
   editId = id || null
   const m = id ? tasks.find(t => t.id == id) : null
+  const selectedAssignees = m ? getAssignees(m) : []
   document.getElementById('modal-title').textContent = id ? 'タスクを編集' : 'タスクを追加'
   document.getElementById('f-title').value = m ? m.title : ''
   document.getElementById('f-desc').value = m ? m.description || '' : ''
-  document.getElementById('f-assignee').value = m ? m.assignee : ''
+  document.getElementById('f-assignee-list').innerHTML = buildAssigneeCheckboxes(selectedAssignees)
   document.getElementById('f-cat').value = m ? m.category || '設備' : '設備'
   document.getElementById('f-due').value = m ? m.due_date || '' : ''
   document.getElementById('f-status').value = m ? m.status : 'todo'
@@ -312,5 +328,4 @@ document.getElementById('filterAssignee').addEventListener('change', render)
 document.getElementById('filterCat').addEventListener('change', render)
 document.getElementById('search').addEventListener('input', render)
 
-// 30秒ごとに自動更新
 setInterval(() => { if (currentUser) loadTasks() }, 30000)
