@@ -112,7 +112,15 @@ async function saveTask() {
   if (payload.status === 'done' && prevStatus !== 'done') {
     const taskData = editId ? { ...prevTask, ...payload } : payload
     try {
-      await supabase.functions.invoke('send-completion-email', { body: taskData })
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch('https://ntnkhngzjzvqgsofspmt.supabase.co/functions/v1/send-completion-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(taskData),
+      })
     } catch(e) {
       console.error('メール送信エラー:', e)
     }
