@@ -97,11 +97,27 @@ async function saveTask() {
     progress_note: document.getElementById('f-progress-note').value.trim(),
     completion_note: document.getElementById('f-completion-note').value.trim(),
   }
+
+  // 既存タスクのステータスを確認
+  const prevTask = editId ? tasks.find(t => t.id == editId) : null
+  const prevStatus = prevTask ? prevTask.status : null
+
   if (editId) {
     await supabase.from('tasks').update(payload).eq('id', editId)
   } else {
     await supabase.from('tasks').insert(payload)
   }
+
+  // 完了に変更された場合はメール送信
+  if (payload.status === 'done' && prevStatus !== 'done') {
+    const taskData = editId ? { ...prevTask, ...payload } : payload
+    try {
+      await supabase.functions.invoke('send-completion-email', { body: taskData })
+    } catch(e) {
+      console.error('メール送信エラー:', e)
+    }
+  }
+
   closeModal()
   await loadTasks()
 }
