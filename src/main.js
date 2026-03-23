@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js'
 
+const ADMIN_EMAILS = ['rintaronakai@gmail.com']
+let isAdmin = false
 const MEMBERS = ['岸本理事','原田理事','黒木理事','藤枝理事','水上理事','田中理事','福澤理事','森監事','河口監事','川上氏','石野氏','管理会社','その他']
 const CATS = ['設備','会計','総会','清掃','防犯','消防','その他']
 const STATUS_LABEL = { todo: '未着手', doing: '対応中', done: '完了' }
@@ -23,9 +25,12 @@ const mainApp = document.getElementById('main-app')
 function showAuth() { authScreen.style.display = 'flex'; mainApp.style.display = 'none' }
 function showApp(user) {
   currentUser = user
+  isAdmin = ADMIN_EMAILS.includes(user.email)
   authScreen.style.display = 'none'
   mainApp.style.display = 'block'
   document.getElementById('user-email').textContent = user.email
+  // 管理者のみ「タスクを追加」ボタンを表示
+  document.getElementById('btn-add').style.display = isAdmin ? '' : 'none'
   loadTasks()
 }
 
@@ -298,6 +303,7 @@ window.openDetail = function(id) {
     ${t.progress_note ? `<div style="margin-bottom:1rem;padding:12px;border-left:3px solid var(--amber);background:rgba(239,159,39,0.06);border-radius:0 var(--radius) var(--radius) 0"><div style="font-size:11px;color:var(--amber);margin-bottom:5px;font-weight:500">進捗状況</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${t.progress_note}</div></div>` : ''}
     ${t.completion_note ? `<div style="margin-bottom:1rem;padding:12px;border-left:3px solid var(--green);background:rgba(99,153,34,0.06);border-radius:0 var(--radius) var(--radius) 0"><div style="font-size:11px;color:var(--green);margin-bottom:5px;font-weight:500">完了報告</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${t.completion_note}</div></div>` : ''}
   `
+  document.getElementById('btn-detail-edit').style.display = isAdmin ? '' : 'none'
   document.getElementById('btn-detail-edit').onclick = () => { closeDetail(); openModal(id) }
   document.getElementById('btn-detail-pdf').onclick = () => exportPDF(t)
   document.getElementById('detail-overlay').style.display = 'flex'
@@ -363,6 +369,7 @@ function buildAssigneeCheckboxes(selected = []) {
 }
 
 window.openModal = function(id) {
+  if (!isAdmin) return
   editId = id || null
   const m = id ? tasks.find(t => t.id == id) : null
   const selectedAssignees = m ? getAssignees(m) : []
