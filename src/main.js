@@ -62,9 +62,24 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
   msg.textContent = ''; msg.className = 'auth-msg'
   if (!email || !password) { msg.textContent = 'メールアドレスとパスワードを入力してください'; msg.className = 'auth-msg error'; return }
   if (password.length < 6) { msg.textContent = 'パスワードは6文字以上にしてください'; msg.className = 'auth-msg error'; return }
-  const { error } = await supabase.auth.signUp({ email, password })
-  if (error) { msg.textContent = '登録失敗：' + error.message; msg.className = 'auth-msg error'; return }
-  msg.textContent = '確認メールを送信しました。メールのリンクをクリックして登録を完了してください。'; msg.className = 'auth-msg success'
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) {
+    if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+      msg.textContent = 'このメールアドレスはすでに登録されています。ログインタブからログインしてください。'
+    } else {
+      msg.textContent = '登録失敗：' + error.message
+    }
+    msg.className = 'auth-msg error'
+    return
+  }
+  // identitiesが空の場合も既存ユーザー
+  if (data?.user?.identities?.length === 0) {
+    msg.textContent = 'このメールアドレスはすでに登録されています。ログインタブからログインしてください。'
+    msg.className = 'auth-msg error'
+    return
+  }
+  msg.textContent = '確認メールを送信しました。メールのリンクをクリックして登録を完了してください。'
+  msg.className = 'auth-msg success'
 })
 
 document.getElementById('btn-logout').addEventListener('click', async () => {
