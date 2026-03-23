@@ -157,6 +157,8 @@ function dueLabel(d) {
   return s + ' まで'
 }
 
+let quickFilter = null // 'all' | 'over' | 'soon' | 'done'
+
 function getFiltered() {
   const a = document.getElementById('filterAssignee').value
   const c = document.getElementById('filterCat').value
@@ -165,8 +167,16 @@ function getFiltered() {
     if (a && !getAssignees(t).includes(a)) return false
     if (c && t.category !== c) return false
     if (q && !t.title.toLowerCase().includes(q) && !(t.description||'').toLowerCase().includes(q)) return false
+    if (quickFilter === 'over') return t.status !== 'done' && t.due_date && new Date(t.due_date) < today
+    if (quickFilter === 'soon') return t.status !== 'done' && t.due_date && (new Date(t.due_date)-today)/864e5 <= 3 && (new Date(t.due_date)-today)/864e5 >= 0
+    if (quickFilter === 'done') return t.status === 'done'
     return true
   })
+}
+
+window.setQuickFilter = function(type) {
+  quickFilter = quickFilter === type ? null : type
+  render()
 }
 
 function makeCard(t) {
@@ -212,10 +222,22 @@ function render() {
   const soon = tasks.filter(t => t.status !== 'done' && t.due_date && (new Date(t.due_date)-today)/864e5 <= 3 && (new Date(t.due_date)-today)/864e5 >= 0).length
   const done = tasks.filter(t => t.status === 'done').length
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="stat-label">全タスク</div><div class="stat-val">${tasks.length}</div></div>
-    <div class="stat"><div class="stat-label">期限超過</div><div class="stat-val red">${over}</div></div>
-    <div class="stat"><div class="stat-label">期限3日以内</div><div class="stat-val amber">${soon}</div></div>
-    <div class="stat"><div class="stat-label">完了済み</div><div class="stat-val green">${done}</div></div>
+    <div class="stat ${quickFilter===null?'stat-active':''}" onclick="setQuickFilter(null)" style="cursor:pointer">
+      <div class="stat-label">全タスク</div>
+      <div class="stat-val">${tasks.length}</div>
+    </div>
+    <div class="stat ${quickFilter==='over'?'stat-active':''}" onclick="setQuickFilter('over')" style="cursor:pointer">
+      <div class="stat-label">期限超過</div>
+      <div class="stat-val red">${over}</div>
+    </div>
+    <div class="stat ${quickFilter==='soon'?'stat-active':''}" onclick="setQuickFilter('soon')" style="cursor:pointer">
+      <div class="stat-label">期限3日以内</div>
+      <div class="stat-val amber">${soon}</div>
+    </div>
+    <div class="stat ${quickFilter==='done'?'stat-active':''}" onclick="setQuickFilter('done')" style="cursor:pointer">
+      <div class="stat-label">完了済み</div>
+      <div class="stat-val green">${done}</div>
+    </div>
   `
 
   const asel = document.getElementById('filterAssignee')
