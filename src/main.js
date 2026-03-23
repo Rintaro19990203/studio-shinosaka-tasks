@@ -87,6 +87,16 @@ async function saveTask() {
   const checked = [...document.querySelectorAll('.assignee-cb:checked')].map(cb => cb.value)
   if (!title) { alert('タスク名を入力してください'); return }
   if (checked.length === 0) { alert('担当者を1人以上選択してください'); return }
+
+  // ボタンを無効化してローディング表示
+  const btnSave = document.getElementById('btn-save')
+  const btnDelete = document.getElementById('btn-delete')
+  const btnCancel = document.getElementById('btn-cancel')
+  btnSave.disabled = true
+  btnSave.textContent = '保存中...'
+  btnDelete.disabled = true
+  btnCancel.disabled = true
+
   const payload = {
     title,
     description: document.getElementById('f-desc').value.trim(),
@@ -98,36 +108,43 @@ async function saveTask() {
     completion_note: document.getElementById('f-completion-note').value.trim(),
   }
 
-  // 既存タスクのステータスを確認
   const prevTask = editId ? tasks.find(t => t.id == editId) : null
   const prevStatus = prevTask ? prevTask.status : null
 
-  if (editId) {
-    await supabase.from('tasks').update(payload).eq('id', editId)
-  } else {
-    await supabase.from('tasks').insert(payload)
-  }
-
-  // 完了に変更された場合はメール送信
-  if (payload.status === 'done' && prevStatus !== 'done') {
-    const taskData = editId ? { ...prevTask, ...payload } : payload
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      await fetch('https://ntnkhngzjzvqgsofspmt.supabase.co/functions/v1/send-completion-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify(taskData),
-      })
-    } catch(e) {
-      console.error('メール送信エラー:', e)
+  try {
+    if (editId) {
+      await supabase.from('tasks').update(payload).eq('id', editId)
+    } else {
+      await supabase.from('tasks').insert(payload)
     }
-  }
 
-  closeModal()
-  await loadTasks()
+    if (payload.status === 'done' && prevStatus !== 'done') {
+      const taskData = editId ? { ...prevTask, ...payload } : payload
+      btnSave.textContent = 'メール送信中...'
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        await fetch('https://ntnkhngzjzvqgsofspmt.supabase.co/functions/v1/send-completion-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify(taskData),
+        })
+      } catch(e) {
+        console.error('メール送信エラー:', e)
+      }
+    }
+
+    closeModal()
+    await loadTasks()
+  } finally {
+    // 必ずボタンを元に戻す
+    btnSave.disabled = false
+    btnSave.textContent = '保存'
+    btnDelete.disabled = false
+    btnCancel.disabled = false
+  }
 }
 
 async function deleteTask() {
