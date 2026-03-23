@@ -78,6 +78,46 @@ supabase.auth.getSession().then(({ data: { session } }) => {
   else showAuth()
 })
 
+// パスワードリセットのURLを検知
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    document.getElementById('auth-screen').style.display = 'none'
+    document.getElementById('reset-screen').style.display = 'flex'
+    document.getElementById('main-app').style.display = 'none'
+  }
+})
+
+// パスワード変更ボタン
+document.getElementById('btn-update-password').addEventListener('click', async () => {
+  const newPassword = document.getElementById('new-password').value
+  const confirm = document.getElementById('new-password-confirm').value
+  const msg = document.getElementById('reset-msg')
+  msg.textContent = ''; msg.className = 'auth-msg'
+  if (!newPassword || !confirm) { msg.textContent = 'パスワードを入力してください'; msg.className = 'auth-msg error'; return }
+  if (newPassword.length < 6) { msg.textContent = 'パスワードは6文字以上にしてください'; msg.className = 'auth-msg error'; return }
+  if (newPassword !== confirm) { msg.textContent = 'パスワードが一致しません'; msg.className = 'auth-msg error'; return }
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) { msg.textContent = '変更失敗：' + error.message; msg.className = 'auth-msg error'; return }
+  msg.textContent = 'パスワードを変更しました！ログイン画面に戻ります...'; msg.className = 'auth-msg success'
+  setTimeout(async () => {
+    await supabase.auth.signOut()
+    document.getElementById('reset-screen').style.display = 'none'
+    showAuth()
+  }, 2000)
+})
+
+// パスワードを忘れた方
+document.getElementById('btn-forgot').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim()
+  const msg = document.getElementById('auth-msg')
+  if (!email) { msg.textContent = 'メールアドレスを入力してからクリックしてください'; msg.className = 'auth-msg error'; return }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://studio-shinosaka-tasks.vercel.app'
+  })
+  if (error) { msg.textContent = '送信失敗：' + error.message; msg.className = 'auth-msg error'; return }
+  msg.textContent = 'パスワードリセットメールを送信しました。メールをご確認ください。'; msg.className = 'auth-msg success'
+})
+
 // ─── TASKS ───────────────────────────────────────────────
 async function loadTasks() {
   document.getElementById('board-area').innerHTML = '<div class="loading">読み込み中...</div>'
